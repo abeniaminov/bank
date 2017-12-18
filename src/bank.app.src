@@ -1,0 +1,16 @@
+{application, bank,
+ [{description, "Bank test app"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { bank_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.

@@ -4,11 +4,12 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 16. Дек. 2017 15:53
+%%% Created : 22. Дек. 2017 20:22
 %%%-------------------------------------------------------------------
--module(request_hanler).
+-module(bank_handler).
 -author("abeniaminov").
 
+%% API
 -export([init/2]).
 -export([content_types_provided/2]).
 
@@ -28,33 +29,19 @@ resp_to_json(#{path := Path} = Req, State) ->
     Action = hd(lists:reverse(string:tokens(binary_to_list(Path), "/"))),
     MapResult =
         case Action of
-            "get_trasfer_history" -> get_transfer_history(Req);
-            "transfer" -> transfer(Req);
-            "withdraw" -> withdraw(Req);
-            "recharge" -> recharge(Req);
+            "create_customer" -> create_customer(Req);
             _ -> not_found(Req)
         end,
     Body =
         jsx:encode(
             #{
                 <<"result">> => MapResult
-             }
+            }
         ),
     {Body, Req, State}.
 
 
-get_transfer_history(Req) ->
-    #{<<"status">> => ok}.
-
-
-
-transfer(Req) ->
-    #{<<"status">> => ok}.
-
-withdraw(Req) ->
-    #{<<"status">> => ok}.
-
-recharge(Req) ->
+create_customer(Req) ->
     #{<<"status">> => ok}.
 
 

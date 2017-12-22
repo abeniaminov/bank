@@ -74,7 +74,21 @@ routes()->
 -spec api() -> [{string(), atom()}].
 api() ->
     [
-        {"/", index_handler},
-        {"/request/transfer", request_hanler},
-        {"/request/get_trasfer_history", request_hanler}
-        ].
+        {"/",                               index_handler},
+
+        {"/bank/create_customer/",          bank_handler},
+
+        {"/authorisation/login",            authorisation_handler},
+        {"/authorisation/logout",           authorisation_handler},
+
+        {"/request/withdraw",               request_hanler},
+        {"/request/recharge",               request_hanler},
+        {"/request/transfer",               request_hanler},
+        {"/request/get_account_status",     request_hanler},
+        {"/request/get_trasfer_history",    request_hanler},
+
+        {"/transaction/request",            transaction_handler},
+        {"/transaction/pre_commit",         transaction_handler},
+        {"/transaction/rollback",           transaction_handler},
+        {"/transaction/commit",             transaction_handler}
+    ].

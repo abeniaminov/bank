@@ -19,8 +19,10 @@
     id :: session_id(),
     customer_id :: customer_id(),
     customer_name :: binary(),
+    customer_card :: list(),
     account_id :: account_id(),
-    bank_id :: bank_id()
+    bank_id :: bank_id(),
+    state :: integer()
 }).
 
 -record(customer, {
@@ -67,7 +69,8 @@
     type :: income | outlay,
     type_val :: 1 | -1,
     account_id ::  account_id(),
-    parent_transaction_id :: binary()
+    parent_transaction_id :: binary(),
+    state :: integer()
 }).
 
 -record(card_order, {

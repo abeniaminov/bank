@@ -8,10 +8,10 @@
 
 -spec uuid() -> string().
 uuid() ->
-    R1 = rand:uniform_s(1, round(math:pow(2, 48))) - 1,
-    R2 = rand:uniform_s(1, round(math:pow(2, 12))) - 1,
-    R3 = rand:uniform_s(1, round(math:pow(2, 32))) - 1,
-    R4 = rand:uniform_s(1, round(math:pow(2, 30))) - 1,
+    R1 = rand:uniform(round(math:pow(2, 48))) - 1,
+    R2 = rand:uniform(round(math:pow(2, 12))) - 1,
+    R3 = rand:uniform(round(math:pow(2, 32))) - 1,
+    R4 = rand:uniform(round(math:pow(2, 30))) - 1,
     <<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>> = <<R1:48, 4:4, R2:12, 2:2, R3:32, R4:30>>,
     lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~2.16.0b~2.16.0b-~12.16.0b",
                                     [TL, TM, THV, CSR, CSL, N])).
@@ -308,7 +308,7 @@ generate_rand(PassLen) ->
                                                 %    L = "DFGJLQRSVWZ23456789",
     L = "0123456789",
 
-    [lists:nth(rand:uniform_s(length(L)), L) || _ <- lists:seq(1, PassLen)].
+    [lists:nth(rand:uniform(length(L)), L) || _ <- lists:seq(1, PassLen)].
 
 
 to_binary(A) when is_atom(A) ->

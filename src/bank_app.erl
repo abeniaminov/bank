@@ -9,6 +9,7 @@
 
 %% Application callbacks
 -export([start/0, start/2, stop/1, name/0]).
+-include("bank.hrl").
 
 %%====================================================================
 %% API
@@ -17,6 +18,8 @@
 start(_Type, _Args) ->
     {ok, Pid} =  bank_sup:start_link(),
     ok = start_cowboy(),
+
+    ok = mnesia_init:database_init(),
     {ok, Pid}.
     
 start() ->
@@ -25,12 +28,15 @@ start() ->
     ok = application:start(asn1),
     ok = application:start(public_key),
     ok = application:start(ssl),
+    ok = mnesia:delete_schema([node()]),
+    ok = mnesia:create_schema([node()]),
+    ok = mnesia:start(),
 
-    ok = application:start(mnesia),
     ok = application:start(ranch),
     ok = application:start(cowlib),
     ok = application:start(cowboy),
     ok = application:start(bank).
+
 
 %%--------------------------------------------------------------------
 stop(_State) ->
@@ -48,7 +54,7 @@ name() ->
 
 -spec start_cowboy() -> ok.
 start_cowboy() ->
-    case application:get_env(cowboy) of
+    case application:get_env(bank, cowboy) of
         {ok, Config} when erlang:is_list(Config) ->
             NumAcceptors = proplists:get_value(nbacceptors, Config),
             IP = proplists:get_value(ip, Config),
@@ -81,14 +87,7 @@ api() ->
         {"/authorisation/login",            authorisation_handler},
         {"/authorisation/logout",           authorisation_handler},
 
-        {"/request/withdraw",               request_hanler},
-        {"/request/recharge",               request_hanler},
-        {"/request/transfer",               request_hanler},
-        {"/request/get_account_status",     request_hanler},
-        {"/request/get_trasfer_history",    request_hanler},
-
-        {"/transaction/request",            transaction_handler},
-        {"/transaction/pre_commit",         transaction_handler},
+        {"/transaction/prepare",            transaction_handler},
         {"/transaction/rollback",           transaction_handler},
         {"/transaction/commit",             transaction_handler}
     ].

@@ -30,7 +30,7 @@ resp_to_json(#{path := Path} = Req, State) ->
     MapResult =
         case Action of
             "login" -> login(Req);
-            "logou" -> logot(Req);
+            "logout" -> logout(Req);
             _ -> not_found(Req)
         end,
     Body =

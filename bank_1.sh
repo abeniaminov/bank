@@ -1,8 +1,8 @@
 #!/bin/sh
 
 NAME="bank" # main app and node name
-COOKIE=QKDFVRMXUFKAFWQFMAJA
-CONFIG=bank
+COOKIE=QKDFVRMXUFKAFWQFMAJA1
+CONFIG=bank_1
 
 # get our IP address
 IP=`ifconfig  | grep 'inet addr:' | grep -v '127.0.0.1'  --max-count=1 | cut -d: -f2 | awk '{print $1}'`
@@ -79,7 +79,6 @@ else
             -config ${CONFIG} \
             -name ${MAIN_NODE} \
             -setcookie ${COOKIE} \
-            -s nodeclt_reloader \
             -s ${MAIN_APP} \
             ${ERL_ARGS} \
             -detached \
@@ -90,7 +89,6 @@ else
             -pa $SERVER_ROOT/ebin \
             -name ${CTRL_NODE} \
             -setcookie ${COOKIE} \
-            -s nodeclt \
             -hidden \
             -connect_all false \
             ${ERL_ARGS} \

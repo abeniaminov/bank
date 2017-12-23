@@ -1,5 +1,6 @@
 -define(fl(List), lists:flatten(List)).
 -define( FMT(F,P), lists:flatten(io_lib:format(F,P)) ).
+-define( FMTB(F,P), utl:binary(lists:flatten(io_lib:format(F,P))) ).
 
 -define(DEBUG(Format, Data), lager:info("~p (~p): " ++ Format, case Data of undefined ->
                                                                       [?MODULE, ?LINE];
@@ -23,7 +24,7 @@
        ).
 
 
-%-define(debug, true).
+-define(debug, true).
 -ifdef(debug).
 -define(DEBUG_PRINT(X, L),         io:format("{=====DEBUG== ~p,LINE: ~p}: ~p~n", [?MODULE, L ,X])).
 -define(DEBUG_PRINT(X, Y, L),      io:format("{=====DEBUG== ~p,LINE: ~p}: ~p ~p~n", [?MODULE, L, X, Y])).

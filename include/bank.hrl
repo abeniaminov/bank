@@ -9,14 +9,14 @@
 -author("abeniaminov").
 
 -type(customer_id() :: integer()).
--type(session_id() :: binary()).
 -type(bank_id() :: integer()).
 -type(account_id() :: binary()).
 -type(datetime() :: {{1970..2050, 1..12, 1..31},{0..23, 0..59, 0..59}}).
 -type(ip() :: list()).
+-type(id() :: bianry()).
 
 -record(session, {
-    id :: session_id(),
+    id :: id(),
     customer_id :: customer_id(),
     customer_name :: list(),
     customer_card :: list(),
@@ -35,7 +35,7 @@
 -define(q_customer, #customer{id = '_', name = '_'}).
 
 -record(account, {
-    id :: binary(),
+    id :: id(),
     cid :: customer_id() | bank_id()
 }).
 
@@ -71,7 +71,7 @@
 
 
 -record(transfer_order, {
-    id :: binary(),
+    id :: id(),
     type :: inter_bank | intra_bank,
     from :: { bank_id(), account_id()} | null,
     to :: { bank_id() , account_id()} | null,
@@ -85,6 +85,7 @@
 
 -record(transaction_order,{
     id :: binary(),
+    transfer_order_id :: binary(),
     type :: inter_bank | intra_bank,
     tr_type :: refill | withdraw,
     account_id ::  account_id(),
@@ -95,8 +96,8 @@
 }).
 
 -record(transaction, {
-    id :: binary(),
-    transaction_order_id :: binary(),
+    id :: id(),
+    transaction_order_id :: id(),
     type :: refill | withdraw | commission_income | commission_outlay,
     type_val :: 1 | -1,
     account_id ::  account_id(),
@@ -109,7 +110,7 @@
 
 
 -record(card_order, {
-    id :: binary(),
+    id :: id(),
     type :: refill | withdraw | transfer,
     amount :: float(),
     from_card_no :: list() | null,
@@ -136,5 +137,5 @@
 -define(prepared, 2).
 -define(committing, 3).
 -define(committed, 4).
--define(aborting, 5).
+-define(rollbacked, 5).
 -define(aborted, 6).

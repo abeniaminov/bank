@@ -64,10 +64,26 @@ prepare(Req) ->
     i_prepare(Qs).
 
 rollback(Req) ->
-    #{<<"status">> => rollback}.
+    Qs =
+        try cowboy_req:match_qs(
+            [
+                {transfer_order_id, nonempty}
+            ], Req)
+        catch _:_ ->
+            throw({error, bad_parameter})
+        end,
+    i_rollback(Qs).
 
 commit(Req) ->
-    #{<<"status">> => ok}.
+    Qs =
+        try cowboy_req:match_qs(
+            [
+                {transfer_order_id, nonempty},
+            ], Req)
+        catch _:_ ->
+            throw({error, bad_parameter})
+        end,
+    i_commit(Qs).
 
 
 
@@ -104,9 +120,62 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, type := Type, amount 
                     <<"reason">> => null,
                     <<"transfer_order_id">> => ToId}, Res);
         {aborted, Reason} ->
-                #{<<"status">> => ok,
-                  <<"state">> => prepared,
-                  <<"reason">> =>  Reason,
-                  <<"transfer_order_id">> => ToId}
+                #{
+                    <<"status">> => ok,
+                    <<"state">> => aborted,
+                    <<"reason">> =>  Reason,
+                    <<"transfer_order_id">> => ToId}
     end.
 
+
+i_rollback(#{transfer_order_id := ToId} = Qs) ->
+    case mnesia:transaction(fun() ->
+        TrOrder = query:get_transaction_order(ToId),
+        case TrOrder of
+            not_found ->
+                mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
+            T when is_record(T, transaction_order) ->
+                query:rollback_transactions(TrOrder#transaction_order.id),
+                mnesia:write(TrOrder#{status = ?rollbacked}),
+                rollbacked
+        end
+                            end) of
+        {atomic, Res} ->
+            #{
+                <<"status">> => ok,
+                <<"state">> => Res,
+                <<"reason">> => null,
+                <<"transfer_order_id">> => ToId};
+        {aborted, Reason} ->
+            #{
+                <<"status">> => ok,
+                <<"state">> => aborted,
+                <<"reason">> =>  Reason,
+                <<"transfer_order_id">> => ToId}
+    end.
+
+i_commit(#{transfer_order_id := ToId} = Qs) ->
+    case mnesia:transaction(fun() ->
+        TrOrder = query:get_transaction_order(ToId),
+        case TrOrder of
+            not_found ->
+                mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
+            T when is_record(T, transaction_order) ->
+                query:commit_transactions(TrOrder#transaction_order.id),
+                mnesia:write(TrOrder#{status = ?committed}),
+                commited
+        end
+                            end) of
+        {atomic, Res} ->
+            #{
+                <<"status">> => ok,
+                <<"state">> => Res,
+                <<"reason">> => null,
+                <<"transfer_order_id">> => ToId};
+        {aborted, Reason} ->
+            #{
+                <<"status">> => ok,
+                <<"state">> => aborted,
+                <<"reason">> =>  Reason,
+                <<"transfer_order_id">> => ToId}
+    end.

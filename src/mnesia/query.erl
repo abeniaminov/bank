@@ -53,12 +53,13 @@ get_transfer_params(Type) ->
     end.
 
 create_transaction_order(Qs) ->
-    #{type := Type, operation := Op, account_id := AccId, commission := Commission, amount := Amount} = Qs,
+    #{type := Type, operation := Op, account_id := AccId, commission := Commission, amount := Amount,
+        transfer_ordre_id := ToId} = Qs,
     TROrderId = utl:to_binary(utl:uuid()),
     BankAccount = get_bank_account(),
     Now = erlang:localtime(),
     TransactionOrder =
-        #transaction_order{id = TROrderId, type = Type, tr_type = Op,
+        #transaction_order{id = TROrderId, type = Type, tr_type = Op, transfer_order_id = ToId,
             account_id = AccId, modified = Now, created = Now , state = ?prepared},
     BaseTransaction =
         #transaction{
@@ -105,3 +106,21 @@ get_bank_account() ->
     {atomic, L} = mnesia:all_keys(bank),
     {atomic, B} = mnesia:read(bank, hd(L)),
     B#bank.account_id.
+
+get_transaction_order(ToId) ->
+    Q = ?q_transaction#transaction{transaction_order_id = ToId, state = ?prepared},
+    {atomic, L} = mnesia:match_object(Q),
+    case length(L) of
+        0 -> not_found;
+        1 -> hd(L)
+    end.
+
+rollback_transactions(TrOrderId) ->
+    Q = ?q_transaction#transaction{transaction_order_id = TrOrderId},
+    {atomic, L} = mnesia:match_object(Q),
+    lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?rollbacked}) end, L).
+
+commit_transactions(TrOrderId) ->
+    Q = ?q_transaction#transaction{transaction_order_id = TrOrderId},
+    {atomic, L} = mnesia:match_object(Q),
+    lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?committed}) end, L).

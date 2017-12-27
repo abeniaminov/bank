@@ -8,7 +8,7 @@ CONFIG=bank_2
 IP=`ifconfig  | grep 'inet addr:' | grep -v '127.0.0.1'  --max-count=1 | cut -d: -f2 | awk '{print $1}'`
 
 if [ x"" = x"${IP}" ]; then
-    IP=`ifconfig  | grep 'inet ' | grep -v '127.0.0.1'  --max-count=1 | cut -d\  -f10`
+    IP=`ifconfig  | grep 'inet ' | grep -v '127.0.0.1'  --max-count=1 | cut -d\  -f2`
 fi;
 
 if [ x"" = x"${IP}" ]; then
@@ -84,15 +84,8 @@ else
             -detached \
             "$@"
             ;;
-        *) erl \
-            -noinput \
-            -pa $SERVER_ROOT/ebin \
-            -name ${CTRL_NODE} \
-            -setcookie ${COOKIE} \
-            -hidden \
-            -connect_all false \
-            ${ERL_ARGS} \
-            -extra -n ${MAIN_NODE} \
+        "stop") escript \
+            stop.sh  ${CTRL_NODE} ${MAIN_NODE} ${COOKIE} \
             "$@"
             ;;
     esac

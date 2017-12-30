@@ -13,7 +13,7 @@
 -type(account_id() :: binary()).
 -type(datetime() :: {{1970..2050, 1..12, 1..31},{0..23, 0..59, 0..59}}).
 -type(ip() :: list()).
--type(id() :: bianry()).
+-type(id() :: binary()).
 
 -record(session, {
     id :: id(),
@@ -70,18 +70,6 @@
 -define(q_card, #card{card_no = '_', account_id = '_', bank_id = '_', pin_code_hash = '_'}).
 
 
--record(transfer_order, {
-    id :: id(),
-    type :: inter_bank | intra_bank,
-    from :: { bank_id(), account_id()} | null,
-    to :: { bank_id() , account_id()} | null,
-    amount :: float(),
-    created :: datetime(),
-    modified :: datetime(),
-    state :: integer()
-}).
-
--define(q_transfer_order, #transfer_order{id = '_', type = '_', from = '_', to = '_', amount = '_', created = '_', modified = '_', state = '_'}).
 
 -record(transaction_order,{
     id :: binary(),

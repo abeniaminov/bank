@@ -9,6 +9,9 @@
 -module(bank_handler).
 -author("abeniaminov").
 
+-include("logger.hrl").
+-include("bank.hrl").
+
 %% API
 -export([init/2]).
 -export([content_types_provided/2]).
@@ -30,6 +33,7 @@ resp_to_json(#{path := Path} = Req, State) ->
     MapResult =
         case Action of
             "create_customer" -> create_customer(Req);
+            "get_limits" -> get_limits(Req);
             _ -> not_found(Req)
         end,
     Body =
@@ -43,6 +47,23 @@ resp_to_json(#{path := Path} = Req, State) ->
 
 create_customer(Req) ->
     #{<<"status">> => ok}.
+
+get_limits(Req) ->
+    #{type := Type} = Qs =
+        try cowboy_req:match_qs(
+            [
+                {type, nonempty}
+            ], Req)
+        catch _:_ ->
+            throw({error, bad_parameter})
+        end,
+    {atomic, [V]} =
+        mnesia:transaction(fun() ->
+            mnesia:read(transfer_type, utl:to_atom(Type))
+            end),
+    #transfer_type{limit = Limit, commission = Commission} = V,
+    #{<<"limit">> => Limit, <<"commission">> => Commission}.
+
 
 
 not_found(_Req) ->

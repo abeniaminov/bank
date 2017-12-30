@@ -28,9 +28,11 @@ start() ->
     ok = application:start(asn1),
     ok = application:start(public_key),
     ok = application:start(ssl),
+
     ok = mnesia:delete_schema([node()]),
     ok = mnesia:create_schema([node()]),
     ok = mnesia:start(),
+
 
     ok = application:start(ranch),
     ok = application:start(cowlib),
@@ -82,12 +84,18 @@ api() ->
     [
         {"/",                               index_handler},
 
-        {"/bank/create_customer/",          bank_handler},
+        {"/bank/create_customer",          bank_handler},
+        {"/bank/get_limits",               bank_handler},
 
         {"/authorisation/login",            authorisation_handler},
         {"/authorisation/logout",           authorisation_handler},
 
         {"/transaction/prepare",            transaction_handler},
         {"/transaction/rollback",           transaction_handler},
-        {"/transaction/commit",             transaction_handler}
+        {"/transaction/commit",             transaction_handler},
+
+        %% Transfer Agent
+
+        {"/transfer/order",                transfer_agent_handler}
+
     ].

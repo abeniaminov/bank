@@ -21,8 +21,10 @@ get_object(Q) ->
 
 
 get_known_bank(Id) ->
+    ?DEBUG_PRINT("BID", Id, ?LINE),
     {atomic, L} = mnesia:transaction(fun() ->
-        mnesia:read(known_bank, Id) end).
+        mnesia:read(known_bank, Id) end),
+        L.
 
 get_bank_id() ->
     {atomic, L} = mnesia:transaction(fun() ->
@@ -43,7 +45,7 @@ get_account_by_cardno(CardNo) ->
     end.
 
 get_transfer_params(Type) ->
-    TParams = mnesia:read(card, Type),
+    TParams = mnesia:read(transfer_type, Type),
     case length(TParams) of
         0 ->
             mnesia:abort(?FMTB("type params: ~s  not found", [Type]));
@@ -54,44 +56,62 @@ get_transfer_params(Type) ->
 
 create_transaction_order(Qs) ->
     #{type := Type, operation := Op, account_id := AccId, commission := Commission, amount := Amount,
-        transfer_ordre_id := ToId} = Qs,
+        transfer_order_id := ToId} = Qs,
+    AmountF = utl:to_float(utl:to_list(Amount)),
+    ?DEBUG_PRINT("QS CreateTr Order", Qs, ?LINE),
     TROrderId = utl:to_binary(utl:uuid()),
     BankAccount = get_bank_account(),
+    ?DEBUG_PRINT("BankAccount", BankAccount, ?LINE),
     Now = erlang:localtime(),
     TransactionOrder =
-        #transaction_order{id = TROrderId, type = Type, tr_type = Op, transfer_order_id = ToId,
-            account_id = AccId, modified = Now, created = Now , state = ?prepared},
+        #transaction_order{id = TROrderId, type = utl:to_atom(Type), tr_type = utl:to_atom(Op), transfer_order_id = ToId,
+            account_id = AccId, modified = Now, created = Now , state = ?prepared, amount = AmountF},
+    ?DEBUG_PRINT("TransactionOrder", TransactionOrder, ?LINE),
     BaseTransaction =
         #transaction{
             id = utl:to_binary(utl:uuid()),
             transaction_order_id = TROrderId,
-            type = Type, type_val = type_val(Type),
-            account_id = AccId, amount = Amount,
+            type = utl:to_atom(Op), type_val = type_val(utl:to_atom(Op)),
+            account_id = AccId,
+            amount = AmountF,
             state = ?prepared},
+    ?DEBUG_PRINT("BaseTransaction", BaseTransaction, ?LINE),
     CommissionIncome =
         #transaction{
             id = utl:to_binary(utl:uuid()),
             transaction_order_id = TROrderId,
-            type = commission_income, type_val = type_val(commission_income),
-            account_id = BankAccount, amount = Amount*Commission/100,
+            type = commission_income,
+            type_val = type_val(commission_income),
+            account_id = BankAccount,
+            amount = AmountF*Commission/100,
             state = ?prepared},
+    ?DEBUG_PRINT("CommissionIncome", CommissionIncome, ?LINE),
     CommissionOutlay =
         #transaction{
             id = utl:to_binary(utl:uuid()),
             transaction_order_id = TROrderId,
             type = commission_outlay, type_val = type_val(commission_outlay),
-            account_id = AccId, amount = Amount*Commission/100,
+            account_id = AccId, amount = AmountF*Commission/100,
             state = ?prepared},
-    mnesia:write(TransactionOrder),
-    mnesia:write(BaseTransaction),
-    mnesia:write(CommissionIncome),
-    mnesia:write(CommissionOutlay),
+    ?DEBUG_PRINT("CommissionOutlay", CommissionOutlay, ?LINE),
+    R1 = mnesia:write(TransactionOrder),
+    ?DEBUG_PRINT("FINNNNN", R1, ?LINE),
+    R2 = mnesia:write(BaseTransaction),
+    ?DEBUG_PRINT("FINNNNN", R2, ?LINE),
+    R3 = mnesia:write(CommissionIncome),
+    ?DEBUG_PRINT("FINNNNN", R3, ?LINE),
+    R4 = mnesia:write(CommissionOutlay),
+    ?DEBUG_PRINT("FINNNNN", R4, ?LINE),
+    ?DEBUG_PRINT("FINNNNN", ?LINE),
 
     {ok, TROrderId}.
 
 get_account_amount(AccountId) ->
     Q = ?q_transaction#transaction{account_id = AccountId, state = ?committed},
-    {atomic, L} = mnesia:match_object(Q),
+    ?DEBUG_PRINT("ACCQQQ", Q, ?LINE),
+    L = mnesia:match_object(Q),
+    ?DEBUG_PRINT("ACCLLLLL", L, ?LINE),
+
     case length(L) of
         0 -> 0;
         _ -> lists:foldl(fun(X, Acc) -> Acc + X#transaction.amount * X#transaction.type_val end, 0, L)
@@ -103,13 +123,13 @@ type_val(commission_income) -> 1;
 type_val(commission_outlay) -> -1.
 
 get_bank_account() ->
-    {atomic, L} = mnesia:all_keys(bank),
-    {atomic, B} = mnesia:read(bank, hd(L)),
+     L = mnesia:all_keys(bank),
+     [B] = mnesia:read(bank, hd(L)),
     B#bank.account_id.
 
 get_transaction_order(ToId) ->
     Q = ?q_transaction#transaction{transaction_order_id = ToId, state = ?prepared},
-    {atomic, L} = mnesia:match_object(Q),
+    L = mnesia:match_object(Q),
     case length(L) of
         0 -> not_found;
         1 -> hd(L)
@@ -117,10 +137,20 @@ get_transaction_order(ToId) ->
 
 rollback_transactions(TrOrderId) ->
     Q = ?q_transaction#transaction{transaction_order_id = TrOrderId},
-    {atomic, L} = mnesia:match_object(Q),
+    L = mnesia:match_object(Q),
     lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?rollbacked}) end, L).
 
 commit_transactions(TrOrderId) ->
     Q = ?q_transaction#transaction{transaction_order_id = TrOrderId},
-    {atomic, L} = mnesia:match_object(Q),
+    L = mnesia:match_object(Q),
     lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?committed}) end, L).
+
+
+create_card_order(#{type := Type, operation := Op, card_from := CardFrom, card_to := CardTo, amount := Amount}) ->
+    CardOrderId = utl:uuid(),
+    OrderDateTime = erlang:localtime(),
+    CardOrder =
+        #card_order{id = CardOrderId, amount = Amount, from_card_no = CardFrom, to_card_no = CardTo, type = Type,
+            order_datetime = OrderDateTime, state = 0},
+    mnesia:write(CardOrder),
+    {card_order, CardOrderId}.

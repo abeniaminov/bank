@@ -61,6 +61,7 @@ prepare(Req) ->
         catch _:_ ->
             throw({error, bad_parameter})
         end,
+    ?DEBUG_PRINT("QS!!!!", Qs, ?LINE),
     i_prepare(Qs).
 
 rollback(Req) ->
@@ -78,7 +79,7 @@ commit(Req) ->
     Qs =
         try cowboy_req:match_qs(
             [
-                {transfer_order_id, nonempty},
+                {transfer_order_id, nonempty}
             ], Req)
         catch _:_ ->
             throw({error, bad_parameter})
@@ -93,23 +94,28 @@ not_found(_Req) ->
 
 i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, type := Type, amount := Amount} = Qs) ->
     case mnesia:transaction(fun() ->
-            AccId = query:get_account_by_cardno(CardNo),
-            {Commission, Limit} = query:get_transfer_params(Type),
-            case Limit < 0 of
-                true -> continue;
-                false ->
-                    case Limit >= Amount of
-                        true -> continue;
-                        false -> mnesia:abort(?FMTB("Transaction limit is exceeded", []))
-                    end
-            end,
-            AccAmount = query:get_account_amount(AccId),
-            case  AccAmount > Amount* (1 + Commission/100) of
-                true -> continue;
-                false -> mnesia:abort(?FMTB("Insufficient funds", []))
-            end,
-
-            {ok, TransactionOrderId} = query:create_transaction_order(Qs#{account_id => AccId, commission => Commission, limit => Limit }),
+         AmountF = utl:to_float(utl:to_list(Amount)),
+         ?DEBUG_PRINT("AmountF!!!!", AmountF, ?LINE),
+         AccId = query:get_account_by_cardno(utl:to_list(CardNo)),
+         ?DEBUG_PRINT("ACCID!!!!", AccId, ?LINE),
+         {Commission, Limit} = query:get_transfer_params(utl:to_atom(Type)),
+         ?DEBUG_PRINT("{Commission, Limit}", {Commission, Limit}, ?LINE),
+         case Limit < 0 of
+             true -> continue;
+             false ->
+                 case Limit >= AmountF of
+                     true -> continue;
+                     false -> mnesia:abort(?FMTB("Transaction limit is exceeded", []))
+                 end
+         end,
+         AccAmount = query:get_account_amount(AccId),
+         ?DEBUG_PRINT("AccAmount!!!!", AccAmount, ?LINE),
+         case  AccAmount > AmountF * (1 + Commission/100) of
+             true -> continue;
+             false -> mnesia:abort(?FMTB("Insufficient funds", []))
+         end,
+       {ok, TransactionOrderId} = query:create_transaction_order(Qs#{account_id => AccId, commission => Commission, limit => Limit }),
+        ?DEBUG_PRINT("TransactionOrderId!!!!", TransactionOrderId, ?LINE),
             #{<<"transaction_order_id">> => TransactionOrderId, <<"commission">> => Commission, <<"limit">> => Limit}
         end) of
         {atomic, Res} ->
@@ -136,7 +142,7 @@ i_rollback(#{transfer_order_id := ToId} = Qs) ->
                 mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
             T when is_record(T, transaction_order) ->
                 query:rollback_transactions(TrOrder#transaction_order.id),
-                mnesia:write(TrOrder#{status = ?rollbacked}),
+                mnesia:write(TrOrder#transaction_order{state = ?rollbacked}),
                 rollbacked
         end
                             end) of
@@ -162,7 +168,7 @@ i_commit(#{transfer_order_id := ToId} = Qs) ->
                 mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
             T when is_record(T, transaction_order) ->
                 query:commit_transactions(TrOrder#transaction_order.id),
-                mnesia:write(TrOrder#{status = ?committed}),
+                mnesia:write(TrOrder#transaction_order{state = ?committed}),
                 commited
         end
                             end) of

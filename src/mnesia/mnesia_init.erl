@@ -21,7 +21,7 @@ database_init() ->
     mnesia:create_table(customer,          [{attributes, record_info(fields, customer)}]),
     mnesia:create_table(account,           [{attributes, record_info(fields, account)}]),
     mnesia:create_table(bank,              [{attributes, record_info(fields, bank)}]),
-    mnesia:create_table(transfer_order,    [{attributes, record_info(fields, transfer_order)}]),
+    mnesia:create_table(transaction_order, [{attributes, record_info(fields, transaction_order)}]),
     mnesia:create_table(transaction,       [{attributes, record_info(fields, transaction)}]),
     mnesia:create_table(card,              [{attributes, record_info(fields, card)}]),
     mnesia:create_table(card_order,        [{attributes, record_info(fields, card_order)}]),

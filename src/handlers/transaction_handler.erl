@@ -92,7 +92,7 @@ not_found(_Req) ->
     #{<<"status">> => action_not_found}.
 
 
-i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, type := Type, amount := Amount} = Qs) ->
+i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  type := Type, amount := Amount} = Qs) ->
     case mnesia:transaction(fun() ->
          AmountF = utl:to_float(utl:to_list(Amount)),
          ?DEBUG_PRINT("AmountF!!!!", AmountF, ?LINE),
@@ -110,10 +110,15 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, type := Type, amount 
          end,
          AccAmount = query:get_account_amount(AccId),
          ?DEBUG_PRINT("AccAmount!!!!", AccAmount, ?LINE),
-         case  AccAmount > AmountF * (1 + Commission/100) of
-             true -> continue;
-             false -> mnesia:abort(?FMTB("Insufficient funds", []))
-         end,
+        case utl:to_atom(Op) of
+            withdraw ->
+                case  AccAmount > AmountF * (1 + Commission/100) of
+                    true -> continue;
+                    false -> mnesia:abort(?FMTB("Insufficient funds", []))
+                end;
+            refill -> continue
+        end,
+
        {ok, TransactionOrderId} = query:create_transaction_order(Qs#{account_id => AccId, commission => Commission, limit => Limit }),
         ?DEBUG_PRINT("TransactionOrderId!!!!", TransactionOrderId, ?LINE),
             #{<<"transaction_order_id">> => TransactionOrderId, <<"commission">> => Commission, <<"limit">> => Limit}
@@ -139,7 +144,7 @@ i_rollback(#{transfer_order_id := ToId} = Qs) ->
         TrOrder = query:get_transaction_order(ToId),
         case TrOrder of
             not_found ->
-                mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
+                rollbacked;
             T when is_record(T, transaction_order) ->
                 query:rollback_transactions(TrOrder#transaction_order.id),
                 mnesia:write(TrOrder#transaction_order{state = ?rollbacked}),
@@ -165,11 +170,11 @@ i_commit(#{transfer_order_id := ToId} = Qs) ->
         TrOrder = query:get_transaction_order(ToId),
         case TrOrder of
             not_found ->
-                mnesia:abort(?FMTB("Transaction with transfer_order_id: ~p not found", [ToId]));
+                committed;
             T when is_record(T, transaction_order) ->
                 query:commit_transactions(TrOrder#transaction_order.id),
                 mnesia:write(TrOrder#transaction_order{state = ?committed}),
-                commited
+                committed
         end
                             end) of
         {atomic, Res} ->

@@ -42,13 +42,16 @@ resp_to_json(#{path := Path} = Req, State) ->
 
             Map -> Map
         end,
-    Body =
-        jsx:encode(
-            #{
+
+    MapResS =  maps:get(<<"result">>, MapResult, null),
+    MapRes =
+        case MapResS of
+            null -> #{
                 <<"result">> => MapResult
-            }
-        ),
-    {Body, Req, State}.
+                    };
+            _ -> MapResult
+        end,
+    {jsx:encode(MapRes), Req, State}.
 
 
 
@@ -70,6 +73,8 @@ order(Req) ->
 not_found(_Req) ->
     #{<<"status">> => action_not_found}.
 
+i_order(#{card_from := CardNo, card_to := CardNo,  amount := _Amount}=Qs) ->
+    #{<<"status">> => ok, <<"state">> => aborted, <<"reason">> => <<"Duplicate cards">>};
 i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
     ?DEBUG_PRINT("QS", Qs, ?LINE),
     BankFromId = get_bank_id_by_card(utl:to_list(CardFrom)),
@@ -102,28 +107,40 @@ i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
             host => Host1,
             port => Port1
     },
-    #{<<"status">> := <<"ok">>, <<"state">> := State1} =
-        send_prepare(MParamFrom),
-    #{<<"status">> := <<"ok">>, <<"state">> := State2} =
-        send_prepare(MParamFrom#{host => Host2, port => Port2, card_no => CardTo, operation => refill}),
+    Res1 = send_prepare(MParamFrom),
+    {ok, State1} =  check_result_status(null, Res1),
+    Res2 = send_prepare(MParamFrom#{host => Host2, port => Port2, card_no => CardTo, operation => refill}),
+    {ok, State2} =
+    case check_result_status(State1, Res2) of
+        {ok, S} -> {ok, S} ;
+        {error, Status2} ->
+            case State1 of
+                <<"prepared">> -> send_rollback(#{host => Host1, port => Port1, transfer_order_id => CardOrder});
+                _ -> Res2
+            end
+
+    end,
+
     case State1 == <<"prepared">> andalso State2 == <<"prepared">> of
         true ->
-           #{<<"state">> := StateC1} = send_commit(#{host => Host1, port => Port1, transfer_order_id => CardOrder}),
-           #{<<"state">> := StateC2} = send_commit(#{host => Host2, port => Port2, transfer_order_id => CardOrder})
-        ;
+            send_commit(#{host => Host1, port => Port1, transfer_order_id => CardOrder}),
+            send_commit(#{host => Host2, port => Port2, transfer_order_id => CardOrder});
         false ->
-            #{<<"state">> := StateR1} = send_rollback(#{host => Host1, port => Port1, transfer_order_id => CardOrder}),
-            #{<<"state">> := StateR2} = send_rollback(#{host => Host2, port => Port2, transfer_order_id => CardOrder})
+            case State1 of
+                <<"prepared">> -> send_rollback(#{host => Host1, port => Port1, transfer_order_id => CardOrder}), Res2;
+                _ -> Res1
+            end,
+            case State2 of
+                <<"prepared">> -> send_rollback(#{host => Host2, port => Port2, transfer_order_id => CardOrder}), Res1;
+                _ -> Res2
+            end
     end.
 
 
 
 send_prepare(MParams) ->
     UriPrepare = ?FMT("http://~s:~s~s", [utl:to_list(maps:get(host, MParams)), utl:to_list(maps:get(port, MParams)), "/transaction/prepare"]),
-    Params =
-
-            maps:to_list(maps:with([card_no, operation, transfer_order_id, type, amount], MParams))
-        ,
+    Params = maps:to_list(maps:with([card_no, operation, transfer_order_id, type, amount], MParams)),
     ?DEBUG_PRINT("Params", Params, ?LINE),
     Res = get_maps_by_request(maps:get(host, MParams), maps:get(port, MParams), <<"GET">>, UriPrepare, ?OUTPUT_JSON_HEADERS, Params),
     ?DEBUG_PRINT("RES", Res, ?LINE),
@@ -131,10 +148,7 @@ send_prepare(MParams) ->
 
 send_commit(MParams) ->
     UriPrepare = ?FMT("http://~s:~s~s", [utl:to_list(maps:get(host, MParams)), utl:to_list(maps:get(port, MParams)), "/transaction/commit"]),
-    Params =
-
-        maps:to_list(maps:with([transfer_order_id], MParams))
-    ,
+    Params = maps:to_list(maps:with([transfer_order_id], MParams)),
     ?DEBUG_PRINT("Params", Params, ?LINE),
     Res = get_maps_by_request(maps:get(host, MParams), maps:get(port, MParams), <<"GET">>, UriPrepare, ?OUTPUT_JSON_HEADERS, Params),
     ?DEBUG_PRINT("RES", Res, ?LINE),
@@ -142,10 +156,7 @@ send_commit(MParams) ->
 
 send_rollback(MParams) ->
     UriPrepare = ?FMT("http://~s:~s~s", [utl:to_list(maps:get(host, MParams)), utl:to_list(maps:get(port, MParams)), "/transaction/rollback"]),
-    Params =
-
-        maps:to_list(maps:with([transfer_order_id], MParams))
-    ,
+    Params = maps:to_list(maps:with([transfer_order_id], MParams)),
     ?DEBUG_PRINT("Params", Params, ?LINE),
     Res = get_maps_by_request(maps:get(host, MParams), maps:get(port, MParams), <<"GET">>, UriPrepare, ?OUTPUT_JSON_HEADERS, Params),
     ?DEBUG_PRINT("RES", Res, ?LINE),
@@ -171,4 +182,15 @@ get_maps_by_request(Host, Port, Method, Url, Header, Params) ->
         {ok, {_, _, JSon}}  ->
             jsx:decode(utl:to_binary(JSon), [return_maps]);
         _ -> throw({error, "Bad answer from Bank"})
+    end.
+
+check_result_status(PState, #{<<"result">> := Res}) ->
+    Status = maps:get(<<"status">>, Res),
+    case Status of
+        <<"ok">> -> {ok, maps:get(<<"state">>, Res)};
+        Other ->
+            case PState of
+                null -> throw({error, Other});
+                _ -> {error, Other}
+            end
     end.

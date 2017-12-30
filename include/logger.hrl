@@ -1,6 +1,6 @@
 -define(fl(List), lists:flatten(List)).
 -define( FMT(F,P), lists:flatten(io_lib:format(F,P)) ).
--define( FMTB(F,P), utl:binary(lists:flatten(io_lib:format(F,P))) ).
+-define( FMTB(F,P), utl:to_binary(lists:flatten(io_lib:format(F,P))) ).
 
 -define(DEBUG(Format, Data), lager:info("~p (~p): " ++ Format, case Data of undefined ->
                                                                       [?MODULE, ?LINE];

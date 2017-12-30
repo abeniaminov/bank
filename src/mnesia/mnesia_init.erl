@@ -37,7 +37,6 @@ init_tables() ->
     lists:foreach(fun({_, X}) -> create:known_bank(maps:from_list(X)) end, KnownBanks),
 
     {ok, TParams} = application:get_env(transfer_params),
-    ?DEBUG_PRINT("TParams", TParams, ?LINE ),
     lists:foreach(fun({_, X}) -> create:transfer_params(maps:from_list(X)) end, TParams),
 
 

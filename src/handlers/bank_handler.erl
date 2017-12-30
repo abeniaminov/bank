@@ -45,11 +45,11 @@ resp_to_json(#{path := Path} = Req, State) ->
     {Body, Req, State}.
 
 
-create_customer(Req) ->
+create_customer(_Req) ->
     #{<<"status">> => ok}.
 
 get_limits(Req) ->
-    #{type := Type} = Qs =
+    #{type := Type} =
         try cowboy_req:match_qs(
             [
                 {type, nonempty}

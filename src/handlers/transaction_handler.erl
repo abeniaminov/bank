@@ -29,11 +29,9 @@ content_types_provided(Req, State) ->
 
 resp_to_json(#{path := Path} = Req, State) ->
     Action = utl:to_atom(hd(lists:reverse(string:tokens(binary_to_list(Path), "/")))),
-    ?DEBUG_PRINT("Action", Action, ?LINE),
     MapResult =
         case catch(?MODULE:Action(Req)) of
             {'EXIT',R} ->
-                ?DEBUG_PRINT("ERROR Action", R, ?LINE),
                 not_found(Req);
 
             Map -> Map
@@ -61,7 +59,6 @@ prepare(Req) ->
         catch _:_ ->
             throw({error, bad_parameter})
         end,
-    ?DEBUG_PRINT("QS!!!!", Qs, ?LINE),
     i_prepare(Qs).
 
 rollback(Req) ->
@@ -95,11 +92,8 @@ not_found(_Req) ->
 i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  type := Type, amount := Amount} = Qs) ->
     case mnesia:transaction(fun() ->
          AmountF = utl:to_float(utl:to_list(Amount)),
-         ?DEBUG_PRINT("AmountF!!!!", AmountF, ?LINE),
          AccId = query:get_account_by_cardno(utl:to_list(CardNo)),
-         ?DEBUG_PRINT("ACCID!!!!", AccId, ?LINE),
          {Commission, Limit} = query:get_transfer_params(utl:to_atom(Type)),
-         ?DEBUG_PRINT("{Commission, Limit}", {Commission, Limit}, ?LINE),
          case Limit < 0 of
              true -> continue;
              false ->
@@ -109,7 +103,6 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
                  end
          end,
          AccAmount = query:get_account_amount(AccId),
-         ?DEBUG_PRINT("AccAmount!!!!", AccAmount, ?LINE),
         case utl:to_atom(Op) of
             withdraw ->
                 case  AccAmount > AmountF * (1 + Commission/100) of
@@ -120,7 +113,6 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
         end,
 
        {ok, TransactionOrderId} = query:create_transaction_order(Qs#{account_id => AccId, commission => Commission, limit => Limit }),
-        ?DEBUG_PRINT("TransactionOrderId!!!!", TransactionOrderId, ?LINE),
             #{<<"transaction_order_id">> => TransactionOrderId, <<"commission">> => Commission, <<"limit">> => Limit}
         end) of
         {atomic, Res} ->

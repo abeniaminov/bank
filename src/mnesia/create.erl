@@ -57,7 +57,6 @@ create_customer(Name, Id, Amount) when is_list(Name), is_integer(Id) ->
     Account = #account{id = AccountId, cid = Id},
     Customer = #customer{id = Id, name = Name},
     CardNo = lists:flatten(io_lib:format("~-3.3.0w", [BankId]) ++ io_lib:format("~3.3.0w", [Id])),
-    ?DEBUG_PRINT("CardNo", CardNo, ?LINE),
     Card = #card{card_no = CardNo, account_id = AccountId, bank_id = BankId, pin_code_hash = utl:md5hex("1111")},
     InitTransaction =
         #transaction{type = refill, transaction_order_id = utl:to_binary(utl:uuid()), id = utl:to_binary(utl:uuid()), type_val = 1, state = ?committed, amount = Amount, account_id = AccountId },

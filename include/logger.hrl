@@ -24,7 +24,7 @@
        ).
 
 
-%%-define(debug, true).
+-define(debug, true).
 -ifdef(debug).
 -define(DEBUG_PRINT(X, L),         io:format("{=====DEBUG== ~p,LINE: ~p}: ~p~n", [?MODULE, L ,X])).
 -define(DEBUG_PRINT(X, Y, L),      io:format("{=====DEBUG== ~p,LINE: ~p}: ~p ~p~n", [?MODULE, L, X, Y])).

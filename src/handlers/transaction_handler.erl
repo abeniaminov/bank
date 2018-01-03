@@ -65,7 +65,7 @@ rollback(Req) ->
     Qs =
         try cowboy_req:match_qs(
             [
-                {transfer_order_id, nonempty}
+                {transaction_order_id, nonempty}
             ], Req)
         catch _:_ ->
             throw({error, bad_parameter})
@@ -76,7 +76,7 @@ commit(Req) ->
     Qs =
         try cowboy_req:match_qs(
             [
-                {transfer_order_id, nonempty}
+                {transaction_order_id, nonempty}
             ], Req)
         catch _:_ ->
             throw({error, bad_parameter})
@@ -94,6 +94,8 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
          AmountF = utl:to_float(utl:to_list(Amount)),
          AccId = query:get_account_by_cardno(utl:to_list(CardNo)),
          {Commission, Limit} = query:get_transfer_params(utl:to_atom(Type)),
+         CommissionAmount = list_to_float(float_to_list(AmountF*Commission/100, [{decimals, 2}])),
+        ?DEBUG_PRINT("CommissionAmount", CommissionAmount, ?LINE),
          case Limit < 0 of
              true -> continue;
              false ->
@@ -105,7 +107,7 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
          AccAmount = query:get_account_amount(AccId),
         case utl:to_atom(Op) of
             withdraw ->
-                case  AccAmount > AmountF * (1 + Commission/100) of
+                case  AccAmount > AmountF + CommissionAmount of
                     true -> continue;
                     false -> mnesia:abort(?FMTB("Insufficient funds", []))
                 end;
@@ -131,7 +133,7 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
     end.
 
 
-i_rollback(#{transfer_order_id := ToId} = Qs) ->
+i_rollback(#{transaction_order_id := ToId} = Qs) ->
     case mnesia:transaction(fun() ->
         TrOrder = query:get_transaction_order(ToId),
         case TrOrder of
@@ -157,9 +159,11 @@ i_rollback(#{transfer_order_id := ToId} = Qs) ->
                 <<"transfer_order_id">> => ToId}
     end.
 
-i_commit(#{transfer_order_id := ToId} = Qs) ->
+i_commit(#{transaction_order_id := ToId} = Qs) ->
+    ?DEBUG_PRINT("transaction_order_id", ToId, ?LINE),
     case mnesia:transaction(fun() ->
         TrOrder = query:get_transaction_order(ToId),
+        ?DEBUG_PRINT("TrOrder", TrOrder, ?LINE),
         case TrOrder of
             not_found ->
                 committed;

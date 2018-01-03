@@ -86,6 +86,8 @@ api() ->
 
         {"/bank/create_customer",          bank_handler},
         {"/bank/get_limits",               bank_handler},
+        {"/bank/card_amount",              bank_handler},
+        {"/bank/amount",                   bank_handler},
 
         {"/authorisation/login",            authorisation_handler},
         {"/authorisation/logout",           authorisation_handler},
@@ -97,5 +99,6 @@ api() ->
         %% Transfer Agent
 
         {"/transfer/order",                transfer_agent_handler}
+
 
     ].

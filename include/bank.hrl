@@ -83,6 +83,9 @@
     state :: integer()
 }).
 
+-define(q_transaction_order, #transaction_order{id = '_', transfer_order_id = '_', type = '_',
+    tr_type = '_', amount = '_', account_id = '_', state = '_', created = '_', modified = '_'}).
+
 -record(transaction, {
     id :: id(),
     transaction_order_id :: id(),

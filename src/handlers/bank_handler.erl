@@ -81,9 +81,10 @@ get_card_amount(Req) ->
 
 
 i_card_amount(#{card_no := CardNo}) ->
-    case  mnesia:transaction( fun() ->
-                    query:get_account_amount(query:get_account_by_cardno(utl:to_list(CardNo)))
-                  end)
+    case  mnesia:transaction(
+        fun() ->
+             query:get_account_amount(query:get_account_by_cardno(utl:to_list(CardNo)))
+        end)
     of
         {atomic, Amount} ->
                   #{
@@ -100,9 +101,10 @@ i_card_amount(#{card_no := CardNo}) ->
     end.
 
 get_bank_amount(_Req) ->
-    case  mnesia:transaction( fun() ->
-        query:get_account_amount(query:get_bank_account())
-                              end)
+    case  mnesia:transaction(
+        fun() ->
+            query:get_account_amount(query:get_bank_account())
+        end)
     of
         {atomic, Amount} ->
             #{

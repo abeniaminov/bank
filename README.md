@@ -11,8 +11,8 @@ Build
 
 Start applications
 -----
-  ./bank_1.sh startd    %% listen 8001
-  ./bank_2.sh startd    %% listen 8002
+  ./bank_1.sh startd     listen port 8001
+  ./bank_2.sh startd     listen port 8002
 
 Banks initiated with customer accounts and cards
 
@@ -39,5 +39,5 @@ http://localhost:8002/bank/card_amount?card_no=200001
 
 Get amount of account linked to bank:
 
-http://localhost:8001/bank/amount   %for bank 1
-http://localhost:8002/bank/amount   %for bank 2
+http://localhost:8001/bank/amount   for bank 1
+http://localhost:8002/bank/amount   for bank 2

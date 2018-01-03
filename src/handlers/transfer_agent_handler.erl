@@ -74,7 +74,6 @@ not_found(_Req) ->
 i_order(#{card_from := CardNo, card_to := CardNo,  amount := _Amount}) ->
     #{<<"status">> => ok, <<"state">> => aborted, <<"reason">> => <<"Duplicate cards">>};
 i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
-    ?DEBUG_PRINT("WWWWWWWWWWWWWW", ?LINE),
     BankFromId = get_bank_id_by_card(utl:to_list(CardFrom)),
     BankToId = get_bank_id_by_card(utl:to_list(CardTo)),
     Type =
@@ -102,7 +101,6 @@ i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
     Res1 = send_prepare(MParamFrom),
     {ok, State1} =  check_result_status(null, Res1),
     {ok, TrOrder1} = get_transaction_order_id(Res1),
-    ?DEBUG_PRINT("TrOrder1", TrOrder1, ?LINE),
     Res2 = send_prepare(MParamFrom#{host => Host2, port => Port2, card_no => CardTo, operation => refill}),
     {ok,  State2} =
     case check_result_status(State1, Res2) of
@@ -115,7 +113,6 @@ i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
 
     end,
     {ok, TrOrder2} = get_transaction_order_id(Res2),
-    ?DEBUG_PRINT("TrOrder2", TrOrder2, ?LINE),
     case State1 == <<"prepared">> andalso State2 == <<"prepared">> of
         true ->
             send_commit(#{host => Host1, port => Port1, transaction_order_id => TrOrder1}),
@@ -134,17 +131,13 @@ i_order(#{card_from := CardFrom, card_to := CardTo,  amount := Amount}=Qs) ->
 
 
 send_prepare(MParams) ->
-    ?DEBUG_PRINT("PREPARE!!!", ?LINE),
     Uri = ?FMT("http://~s:~s~s", [utl:to_list(maps:get(host, MParams)), utl:to_list(maps:get(port, MParams)), "/transaction/prepare"]),
     Params = maps:to_list(maps:with([card_no, operation, transfer_order_id, type, amount], MParams)),
     get_maps_by_request(maps:get(host, MParams), maps:get(port, MParams), <<"GET">>, Uri, ?OUTPUT_JSON_HEADERS, Params).
 
 send_commit(MParams) ->
-    ?DEBUG_PRINT("MParams", MParams, ?LINE),
     Uri = ?FMT("http://~s:~s~s", [utl:to_list(maps:get(host, MParams)), utl:to_list(maps:get(port, MParams)), "/transaction/commit"]),
-    ?DEBUG_PRINT("Uri", Uri, ?LINE),
     Params = maps:to_list(maps:with([transaction_order_id], MParams)),
-    ?DEBUG_PRINT("Params", Params, ?LINE),
     get_maps_by_request(maps:get(host, MParams), maps:get(port, MParams), <<"GET">>, Uri, ?OUTPUT_JSON_HEADERS, Params).
 
 send_rollback(MParams) ->

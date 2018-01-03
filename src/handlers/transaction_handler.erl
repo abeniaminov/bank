@@ -95,7 +95,7 @@ i_prepare(#{card_no := CardNo,  transfer_order_id := ToId, operation := Op,  typ
          AccId = query:get_account_by_cardno(utl:to_list(CardNo)),
          {Commission, Limit} = query:get_transfer_params(utl:to_atom(Type)),
          CommissionAmount = list_to_float(float_to_list(AmountF*Commission/100, [{decimals, 2}])),
-        ?DEBUG_PRINT("CommissionAmount", CommissionAmount, ?LINE),
+
          case Limit < 0 of
              true -> continue;
              false ->
@@ -160,10 +160,9 @@ i_rollback(#{transaction_order_id := ToId} = Qs) ->
     end.
 
 i_commit(#{transaction_order_id := ToId} = Qs) ->
-    ?DEBUG_PRINT("transaction_order_id", ToId, ?LINE),
     case mnesia:transaction(fun() ->
         TrOrder = query:get_transaction_order(ToId),
-        ?DEBUG_PRINT("TrOrder", TrOrder, ?LINE),
+
         case TrOrder of
             not_found ->
                 committed;

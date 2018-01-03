@@ -34,7 +34,6 @@ get_bank_id() ->
     end.
 
 get_account_by_cardno(CardNo) ->
-    ?DEBUG_PRINT("CARD_NO", CardNo, ?LINE),
     RCard = mnesia:read(card, CardNo),
     case length(RCard) of
         0 ->
@@ -59,7 +58,6 @@ create_transaction_order(Qs) ->
         transfer_order_id := ToId} = Qs,
     AmountF = utl:to_float(utl:to_list(Amount)),
     CommissionAmount = list_to_float(float_to_list(AmountF*Commission/100, [{decimals, 2}])),
-    ?DEBUG_PRINT("CommissionAmount", CommissionAmount, ?LINE),
     TROrderId = utl:to_binary(utl:uuid()),
     BankAccount = get_bank_account(),
     Now = erlang:localtime(),
@@ -130,10 +128,8 @@ rollback_transactions(TrOrderId) ->
     lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?rollbacked}) end, L).
 
 commit_transactions(TrOrderId) ->
-    ?DEBUG_PRINT("TrORDERID",TrOrderId, ?LINE ),
     Q = ?q_transaction#transaction{transaction_order_id = TrOrderId},
     L = mnesia:match_object(Q),
-    ?DEBUG_PRINT("Comitted tr", L, ?LINE),
     lists:foreach(fun(X) -> mnesia:write(X#transaction{state = ?committed}) end, L).
 
 
